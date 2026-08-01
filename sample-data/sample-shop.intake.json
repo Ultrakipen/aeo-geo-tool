@@ -1,0 +1,18 @@
+{
+  "_설명": "업종 다양성 검증용 — 쇼핑몰(전국/온라인 대상, locationSensitive:false)이 지역명 없이도 부당하게 감점되지 않는지 확인하는 샘플. 연락처에 일부러 시/도/구/군 지역명을 넣지 않았다.",
+  "q1_url": "",
+  "q2_industry": "쇼핑몰",
+  "q3_brand_name": "그린캔들컴퍼니",
+  "q3_brand_intro": "전국 배송 핸드메이드 소이캔들 온라인 스토어입니다.",
+  "q4_service1": "소이캔들",
+  "q4_service2": "디퓨저",
+  "q4_service3": "선물세트",
+  "q5_target_customer": "20~30대 인테리어에 관심 많은 온라인 쇼핑객",
+  "q6_faq_questions": "배송은 얼마나 걸리나요?, 향이 오래 가나요?, 선물포장 되나요?",
+  "q7_competitors": "",
+  "q8_existing_faq": "없음",
+  "q9_differentiators": "천연 소이왁스 100% 사용, KC 인증 완료, 자체 조향 공방 운영",
+  "q10_contact_info": "고객센터 1544-0000 (전국 어디서나 동일 응대)",
+  "q11_admin_access": "있음",
+  "q12_recheck_date": ""
+}

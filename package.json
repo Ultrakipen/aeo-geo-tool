@@ -1,0 +1,18 @@
+{
+  "name": "aeo-geo-tool",
+  "version": "1.0.0",
+  "description": "AEO·GEO(AI 검색 노출) 진단·콘텐츠 생성 자동화 엔진 — 크몽 'AI 검색 노출 최적화 개선' 상품용",
+  "main": "cli.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dashboard": "node server.js",
+    "demo:standard": "node cli.js --sample=sample-clinic --package=standard",
+    "demo:deluxe": "node cli.js --sample=sample-clinic --package=deluxe",
+    "demo:premium": "node cli.js --sample=sample-clinic --package=premium",
+    "demo:liveurl": "node cli.js --sample=sample-liveurl --package=standard"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

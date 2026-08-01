@@ -1,0 +1,11 @@
+{
+  "_설명": "실 네트워크 fetch 경로 검증용 — q1_url을 실제 접속 가능한 공개 URL로 지정해 siteFetcher가 라이브로 HTML을 가져오는지 확인한다. example.com은 RFC 2606 문서화용 도메인이라 테스트 대상으로 적합하다.",
+  "q1_url": "https://example.com",
+  "q2_industry": "기타",
+  "q3_brand_name": "Example Domain",
+  "q3_brand_intro": "실 URL 자동 수집 파이프라인 검증용 더미 브랜드",
+  "q4_service1": "테스트 서비스",
+  "q5_target_customer": "QA 담당자",
+  "q9_differentiators": "실 네트워크 fetch 경로 검증",
+  "q10_contact_info": ""
+}

@@ -1,0 +1,18 @@
+{
+  "_설명": "리허설용 더미 인테이크 답변 (SOP §2 문항 매핑). q1_url을 비워둬 sample-clinic.html을 오프라인(rawHtml)으로 진단하는 시나리오.",
+  "q1_url": "",
+  "q2_industry": "병원",
+  "q3_brand_name": "미소플러스치과",
+  "q3_brand_intro": "강남역 5번 출구 도보 3분, 임플란트·교정 전문 치과입니다.",
+  "q4_service1": "임플란트",
+  "q4_service2": "치아교정",
+  "q4_service3": "스케일링",
+  "q5_target_customer": "강남·서초 지역 20~50대 직장인",
+  "q6_faq_questions": "임플란트 비용이 얼마나 하나요?, 교정은 얼마나 걸리나요?, 스케일링도 보험이 적용되나요?",
+  "q7_competitors": "인근 A치과, B치과",
+  "q8_existing_faq": "없음",
+  "q9_differentiators": "원장 15년 임상 경력, 대한치과교정학회 정회원, 연간 임플란트 시술 500건 이상",
+  "q10_contact_info": "02-1234-5678 / 서울 강남구 강남대로 100",
+  "q11_admin_access": "있음",
+  "q12_recheck_date": "2026-08-31"
+}
