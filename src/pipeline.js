@@ -13,13 +13,22 @@ const FAQ_COUNT_BY_PACKAGE = { deluxe: 5, premium: 12 };
 
 // 구글폼 필드명 규칙(SOP §2 "q1_url ~ q12_recheck_date")을 그대로 따르되,
 // 3번 문항(브랜드명 및 한줄소개)은 코드에서 다루기 쉽도록 brand_name/brand_intro 두 필드로 나눈다.
+
+// 구글폼 응답자가 "example.com"처럼 프로토콜 없이 입력하는 경우가 흔해서,
+// fetch()가 URL 파싱에 실패하지 않도록 여기서 https://를 자동으로 붙여준다.
+function normalizeUrl(raw) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+  return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 function normalizeIntake(raw = {}) {
   const services = [raw.q4_service1, raw.q4_service2, raw.q4_service3]
     .map((s) => (s || '').trim())
     .filter(Boolean);
 
   return {
-    url: (raw.q1_url || '').trim(),
+    url: normalizeUrl(raw.q1_url),
     industry: (raw.q2_industry || '').trim(),
     brandName: (raw.q3_brand_name || '').trim(),
     brandIntro: (raw.q3_brand_intro || '').trim(),
