@@ -3,7 +3,7 @@
 // rawHtml(직접 넘긴 HTML 문자열)을 받으면 네트워크 호출 없이 그 내용을 그대로 분석 대상으로 쓴다.
 // url이 함께 주어지면 llms.txt/sitemap.xml 존재 여부만 별도로 실제 확인을 시도한다(실패해도 무시).
 
-const FETCH_TIMEOUT_MS = 6000;
+const FETCH_TIMEOUT_MS = 15000;
 
 async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
