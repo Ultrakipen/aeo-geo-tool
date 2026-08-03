@@ -62,12 +62,14 @@ function checkFaqSchema(site) {
 }
 
 function checkLlmsTxt(site) {
+  if (site.llmsTxt.platformHosted) return { no: 4, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 도메인 루트에 파일을 설치할 권한이 없어 해당 항목은 평가에서 제외(중립 처리)' };
   if (!site.llmsTxt.checked) return { no: 4, score: 1, reason: '도메인 확인 불가로 llms.txt 실측 불가(오프라인 테스트) — 실제 URL 진단 시 자동 확인' };
   if (site.llmsTxt.exists) return { no: 4, score: 2, reason: 'llms.txt 파일 확인됨' };
   return { no: 4, score: 0, reason: 'llms.txt 파일 없음' };
 }
 
 function checkSitemap(site) {
+  if (site.sitemap.platformHosted) return { no: 5, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 도메인 루트에 파일을 설치할 권한이 없어 해당 항목은 평가에서 제외(중립 처리)' };
   if (!site.sitemap.checked) return { no: 5, score: 1, reason: '도메인 확인 불가로 sitemap.xml 실측 불가(오프라인 테스트) — 실제 URL 진단 시 자동 확인' };
   if (!site.sitemap.exists) return { no: 5, score: 0, reason: 'sitemap.xml 없음' };
   const lastmodMatches = site.sitemap.content.match(/<lastmod>(20\d{2}-\d{2}-\d{2})/g) || [];

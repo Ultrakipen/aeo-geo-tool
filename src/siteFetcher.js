@@ -27,14 +27,32 @@ async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
   }
 }
 
+// 네이버 블로그·티스토리 등은 개인이 도메인 루트를 제어할 수 없어 llms.txt/sitemap.xml을
+// 아예 설치할 권한이 없다 — 이런 곳에서 "없음"으로 감점하면 고객이 고칠 수 없는 걸 개선하라는
+// 셈이 되므로, 루트 파일 확인 자체를 건너뛰고 별도로 표시한다.
+const BLOG_PLATFORM_HOSTS = [
+  'blog.naver.com', 'm.blog.naver.com', 'post.naver.com', 'blog.me',
+  'tistory.com', 'brunch.co.kr', 'blogspot.com', 'medium.com',
+];
+
+function isBlogPlatformOrigin(origin) {
+  if (!origin) return false;
+  try {
+    const host = new URL(origin).hostname;
+    return BLOG_PLATFORM_HOSTS.some((h) => host === h || host.endsWith(`.${h}`));
+  } catch (err) {
+    return false;
+  }
+}
+
 // 도메인 없이 리허설용 부속파일(llms.txt, sitemap.xml)만 별도 확인.
 async function probeAuxFile(origin, filePath) {
-  if (!origin) return { exists: false, checked: false };
+  if (!origin) return { exists: false, checked: false, platformHosted: false };
   try {
     const result = await fetchWithTimeout(`${origin}${filePath}`, 4000);
-    return { exists: Boolean(result.ok && result.text && result.text.trim().length > 0), checked: true, content: result.ok ? result.text : '' };
+    return { exists: Boolean(result.ok && result.text && result.text.trim().length > 0), checked: true, platformHosted: false, content: result.ok ? result.text : '' };
   } catch (err) {
-    return { exists: false, checked: false };
+    return { exists: false, checked: false, platformHosted: false };
   }
 }
 
@@ -118,7 +136,11 @@ async function fetchSite({ url, rawHtml }) {
     htmlSizeBytes = Buffer.byteLength(html, 'utf-8');
   }
 
-  const [llmsTxt, sitemap] = await Promise.all([
+  const platformHosted = isBlogPlatformOrigin(origin);
+  const platformHostedResult = { exists: false, checked: false, platformHosted: true };
+  const [llmsTxt, sitemap] = platformHosted
+    ? [platformHostedResult, platformHostedResult]
+    : await Promise.all([
     probeAuxFile(origin, '/llms.txt'),
     probeAuxFile(origin, '/sitemap.xml'),
   ]);
