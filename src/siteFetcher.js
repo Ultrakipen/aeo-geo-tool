@@ -5,12 +5,20 @@
 
 const FETCH_TIMEOUT_MS = 15000;
 
+// User-Agent가 없는 요청은 봇으로 간주해 차단하는 사이트(네이버 등)가 있어 실제 브라우저처럼 보이는
+// 헤더를 붙인다 — 헤더 없이 fetch()만 쓰면 이런 사이트에서 응답 없이 계속 걸려있는(hang) 현상이 있었다.
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+};
+
 async function fetchWithTimeout(url, timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const startedAt = Date.now();
   try {
-    const res = await fetch(url, { signal: controller.signal, redirect: 'follow' });
+    const res = await fetch(url, { signal: controller.signal, redirect: 'follow', headers: BROWSER_HEADERS });
     return { ok: res.ok, status: res.status, text: await res.text(), elapsedMs: Date.now() - startedAt };
   } catch (err) {
     return { ok: false, status: 0, error: err.message, elapsedMs: Date.now() - startedAt };
