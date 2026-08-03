@@ -4,3 +4,4 @@ output/*.html
 output/*.txt
 !output/.gitkeep
 jobs/
+kv-data/

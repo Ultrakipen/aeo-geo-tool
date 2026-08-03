@@ -1,26 +1,32 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 
 const { runPipeline, normalizeIntake } = require('./src/pipeline');
-const { writeReport, buildCategoryScores, gradeOf } = require('./src/reportBuilder');
+const { buildReportHtml, buildCategoryScores, gradeOf } = require('./src/reportBuilder');
 const { buildPremiumSnippets } = require('./src/snippetBuilder');
 const { buildCompletionMessage } = require('./src/messenger');
 const { isMockMode } = require('./src/openaiClient');
 const { saveJob, loadJob } = require('./src/jobStore');
+const { kvGet, kvSet } = require('./src/kv');
 const checklist = require('./config/checklist.json');
 
 const app = express();
 const PORT = process.env.PORT || 4174;
 
-const OUTPUT_DIR = path.join(__dirname, 'output');
-if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-
 function newJobId() {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-app.use('/output', express.static(OUTPUT_DIR));
+// 산출물(리포트/스키마/llms.txt)도 kv.js에 저장한다 — 로컬 output/ 폴더는 Render 재시작 시
+// 초기화되므로 다운로드 링크가 파일시스템에 의존하면 안 된다.
+app.get('/output/:fileName', async (req, res) => {
+  const content = await kvGet(`output:${req.params.fileName}`);
+  if (content == null) {
+    return res.status(404).send('파일을 찾을 수 없습니다. 링크가 만료되었을 수 있습니다.');
+  }
+  const contentType = req.params.fileName.endsWith('.txt') ? 'text/plain; charset=utf-8' : 'text/html; charset=utf-8';
+  res.type(contentType).send(content);
+});
+
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
 // Zapier/Make → 이 웹훅으로 설문 답변을 그대로 POST하면 사람이 대시보드 폼에 재입력할 필요 없이
@@ -301,7 +307,7 @@ async function createDiagnosisJob(body) {
   const rawHtml = (body.rawHtml || '').trim() || undefined;
   const result = await runPipeline({ intake, packageTier, rawHtml });
   const jobId = newJobId();
-  saveJob(jobId, result);
+  await saveJob(jobId, result);
   return { jobId, result };
 }
 
@@ -319,8 +325,8 @@ app.post('/diagnose', async (req, res) => {
 });
 
 // 진단이 이미 끝난 작업의 검수 화면을 다시 연다 — 웹훅이 돌려준 reviewUrl로 사람이 들어오는 경로.
-app.get('/review/:jobId', (req, res) => {
-  const job = loadJob(req.params.jobId);
+app.get('/review/:jobId', async (req, res) => {
+  const job = await loadJob(req.params.jobId);
   if (!job) {
     return res.status(404).send(renderErrorPage('검수 세션을 찾을 수 없습니다. 서버가 재시작되었거나 만료되었을 수 있습니다.'));
   }
@@ -352,8 +358,8 @@ app.post('/api/diagnose', checkWebhookToken, express.json({ limit: '2mb' }), asy
   }
 });
 
-app.post('/export/:jobId', (req, res) => {
-  const job = loadJob(req.params.jobId);
+app.post('/export/:jobId', async (req, res) => {
+  const job = await loadJob(req.params.jobId);
   if (!job) {
     return res.status(404).send(renderErrorPage('검수 세션을 찾을 수 없습니다. 진단을 다시 실행해주세요.'));
   }
@@ -376,8 +382,13 @@ app.post('/export/:jobId', (req, res) => {
       }
     }
 
+    const safeBrand = (job.intake.brandName || 'client').replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
+    const stamp = Date.now();
     const files = [];
-    const reportResult = writeReport({
+
+    // 리포트/스키마/llms.txt는 로컬 파일 대신 kv.js(외부 영구 저장소)에 저장하고,
+    // /output/:fileName 라우트가 거기서 읽어 서빙한다(Render 재시작에도 다운로드 링크가 살아있도록).
+    const { html: reportHtml } = buildReportHtml({
       intake: job.intake,
       packageTier: job.packageTier,
       allItems: job.allItems,
@@ -385,30 +396,29 @@ app.post('/export/:jobId', (req, res) => {
       faqs: job.content ? job.content.faqs : null,
       improvedCopy: job.content ? job.content.improvedCopy : null,
       snippets: job.snippets,
-    }, OUTPUT_DIR);
-    files.push({ name: reportResult.fileName, label: '진단 리포트 (.html)' });
+    });
+    const reportFileName = `report_${safeBrand}_${job.packageTier}_${stamp}.html`;
+    await kvSet(`output:${reportFileName}`, reportHtml);
+    files.push({ name: reportFileName, label: '진단 리포트 (.html)' });
 
     if (job.snippets) {
-      const safeBrand = (job.intake.brandName || 'client').replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
-      const stamp = Date.now();
-
       const schemaFileName = `faq-schema_${safeBrand}_${stamp}.html`;
-      fs.writeFileSync(path.join(OUTPUT_DIR, schemaFileName), job.snippets.faqSchemaHtml, 'utf-8');
+      await kvSet(`output:${schemaFileName}`, job.snippets.faqSchemaHtml);
       files.push({ name: schemaFileName, label: 'FAQPage 스키마 코드 (.html)' });
 
       const llmsFileName = `llms_${safeBrand}_${stamp}.txt`;
-      fs.writeFileSync(path.join(OUTPUT_DIR, llmsFileName), job.snippets.llmsTxt, 'utf-8');
+      await kvSet(`output:${llmsFileName}`, job.snippets.llmsTxt);
       files.push({ name: llmsFileName, label: 'llms.txt' });
     }
 
     const completionMessage = buildCompletionMessage({
       brandName: job.intake.brandName || '고객',
       packageTier: job.packageTier,
-      deliverableLink: `${req.protocol}://${req.get('host')}/output/${encodeURIComponent(reportResult.fileName)}`,
+      deliverableLink: `${req.protocol}://${req.get('host')}/output/${encodeURIComponent(reportFileName)}`,
     });
 
     job.exported = true;
-    saveJob(req.params.jobId, job); // 검수 중 수정한 최종본을 남겨 재조회·감사 추적이 가능하도록 반영
+    await saveJob(req.params.jobId, job); // 검수 중 수정한 최종본을 남겨 재조회·감사 추적이 가능하도록 반영
     res.send(renderExportPage(job, { files, completionMessage }));
   } catch (err) {
     res.status(500).send(renderErrorPage(err.message));

@@ -142,13 +142,14 @@ curl -X POST http://localhost:4174/api/diagnose \
 4. 배포 완료 후 `https://아무이름.onrender.com` 같은 실제 URL이 생김 — 이 주소를 Zapier/Make
    웹훅 URL로 사용 (`https://아무이름.onrender.com/api/diagnose`)
 
-**무료 플랜 주의사항**: 15분 미사용 시 인스턴스가 슬립되고, 다음 요청이 오면 재시작된다. 재시작되면
-서버 메모리는 초기화되지만, 검수 대기 중인 진단 작업은 `jobs/` 디렉토리에 파일로 저장되므로
-`reviewUrl`은 재시작 후에도 그대로 열린다(`src/jobStore.js`). 단, **인스턴스 자체가 파일시스템을
-포함해 완전히 새 디스크로 재배포되는 경우(코드 재배포, 플랜 변경 등)에는 `jobs/`와 `output/`의
-내용도 함께 사라진다** — 이때는 검수·전달을 최대한 빨리 끝내고, 리포트는 다운로드해서 구글드라이브
-등에 옮겨두는 걸 권장한다. 안정적인 영구 저장이 필요해지면 Render Disk(유료) 또는 S3 같은 외부
-스토리지 연동을 추가로 검토.
+**무료 플랜 주의사항**: 15분 미사용 시 인스턴스가 슬립되고, 다음 요청이 오면 완전히 새 컨테이너로
+재시작된다 — 이때 로컬 디스크는 초기화되므로 파일로 저장한 데이터는 사라진다. 이 문제 때문에
+검수 대기 중인 진단 작업(`src/jobStore.js`)과 내보내기 산출물(리포트·스키마·llms.txt, `/output/:fileName`
+라우트)은 로컬 파일이 아니라 `src/kv.js`를 거쳐 **Upstash Redis(REST API, 무료 티어)** 에 저장한다.
+Render 배포 시 `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` 환경변수를 설정해야
+`reviewUrl`·다운로드 링크가 슬립/재시작 이후에도 살아있는다. (Upstash 콘솔 → 데이터베이스 생성 →
+REST API 탭에서 두 값을 그대로 복사) 이 두 값이 없으면 `kv.js`가 자동으로 로컬 `kv-data/`
+디렉토리 폴백으로 동작한다 — 로컬 개발용이며, Render 무료 플랜 운영에는 반드시 Upstash를 연결할 것.
 
 ## 파일 용도 구분
 
@@ -165,9 +166,11 @@ curl -X POST http://localhost:4174/api/diagnose \
 - `sample-data/sample-liveurl.intake.json` — 실 URL(example.com) 라이브 fetch 경로 검증용
 - `scripts/e2e-server-test.js` — `server.js`가 떠 있을 때 진단→검수(수정)→내보내기 전체 흐름을
   HTTP로 왕복 검증하는 수동 QA 스크립트 (npm 스크립트에는 등록하지 않음)
-- `output/` — 생성된 리포트·코드 스니펫 파일 저장 위치
-- `jobs/` — 검수 대기 중인 진단 작업 저장 위치(`src/jobStore.js`, 서버 재시작에도 검수 링크가
-  살아있도록 파일로 보관 — git에는 커밋하지 않음)
+- `output/` — `npm run demo:*`(cli.js)가 로컬 실행 시 생성하는 리포트 파일 저장 위치. `server.js`는
+  더 이상 이 폴더를 쓰지 않는다(아래 `src/kv.js` 참고).
+- `src/jobStore.js`, `src/kv.js` — 검수 대기 중인 진단 작업과 내보내기 산출물을 Upstash Redis(REST)에
+  저장한다. Render 슬립/재시작으로 로컬 디스크가 초기화돼도 `reviewUrl`·다운로드 링크가 살아있도록
+  하기 위함. `UPSTASH_REDIS_REST_URL`/`TOKEN`이 없으면 로컬 `kv-data/`로 자동 폴백(git에는 커밋하지 않음).
 
 ## 업종 다양성 대응 (10개 업종 × 다양한 고객 환경)
 
