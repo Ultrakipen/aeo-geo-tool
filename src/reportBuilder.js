@@ -44,6 +44,22 @@ function categoryTableRows(categoryScores) {
   }).join('\n');
 }
 
+function allItemsHtml(categoryScores) {
+  return categoryScores.map((c) => {
+    const rows = c.items.map((it) => `<tr>
+      <td class="mono">${it.no}</td>
+      <td>${escapeHtml(it.text)}</td>
+      <td class="mono">${it.score} / 2</td>
+      <td>${escapeHtml(it.reason)}</td>
+    </tr>`).join('\n');
+    return `<h3 class="cat-heading">${c.code}. ${escapeHtml(c.name)} (${c.methodLabel})</h3>
+    <table>
+      <thead><tr><th>#</th><th>항목</th><th>점수</th><th>사유</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }).join('\n');
+}
+
 function top5Html(top5WithText) {
   if (!top5WithText.length) return '<p class="lead">우선순위 항목이 산출되지 않았습니다.</p>';
   return top5WithText.map((t, i) => `<div class="top5-item">
@@ -104,6 +120,7 @@ function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCo
     GRADE: grade,
     GRADE_CLASS: `grade-${grade}`,
     CATEGORY_TABLE_ROWS: categoryTableRows(categoryScores),
+    ALL_ITEMS_SECTION: allItemsHtml(categoryScores),
     TOP5_ROWS: top5Html(top5WithText),
     CONTENT_SECTION: contentSectionHtml({ packageTier, faqs, improvedCopy }),
     SNIPPET_SECTION: snippetSectionHtml({ packageTier, snippets }),
@@ -126,4 +143,4 @@ function writeReport({ intake, packageTier, allItems, top5, faqs, improvedCopy, 
   return { outputPath, fileName, totalScore, grade, categoryScores };
 }
 
-module.exports = { writeReport, buildReportHtml, buildCategoryScores, gradeOf };
+module.exports = { writeReport, buildReportHtml, buildCategoryScores, gradeOf, allItemsHtml };

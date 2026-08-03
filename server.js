@@ -1,7 +1,7 @@
 const express = require('express');
 
 const { runPipeline, normalizeIntake } = require('./src/pipeline');
-const { buildReportHtml, buildCategoryScores, gradeOf } = require('./src/reportBuilder');
+const { buildReportHtml, buildCategoryScores, gradeOf, allItemsHtml } = require('./src/reportBuilder');
 const { buildPremiumSnippets } = require('./src/snippetBuilder');
 const { buildCompletionMessage } = require('./src/messenger');
 const { isMockMode } = require('./src/openaiClient');
@@ -98,6 +98,8 @@ function baseStyles() {
     td { padding:7px 8px; border-bottom:1px solid var(--border); vertical-align:top; }
     .cat-bar-wrap { background:var(--surface-2); border-radius:6px; height:8px; width:100%; overflow:hidden; }
     .cat-bar { background:var(--accent); height:100%; }
+    .cat-heading { font-size:12.5px; font-weight:800; margin:16px 0 6px; }
+    .cat-heading:first-child { margin-top:0; }
     .top5-item { padding:10px 0; border-bottom:1px solid var(--border); font-size:13px; }
     .top5-item:last-child { border-bottom:none; }
     .top5-no { display:inline-block; min-width:20px; height:20px; border-radius:6px; background:var(--accent-wash); color:var(--accent-strong); font-size:11.5px; font-weight:800; text-align:center; line-height:20px; margin-right:6px; }
@@ -268,6 +270,9 @@ function renderReviewPage(jobId, job) {
 
     <h2>개선 우선순위 Top 5 (전체 30항목 기준)</h2>
     <div class="panel">${top5RowsHtml(top5)}</div>
+
+    <h2>전체 30항목 상세 결과</h2>
+    <div class="panel">${allItemsHtml(categoryScores)}</div>
 
     <form action="/export/${jobId}" method="post">
       ${contentSection}
