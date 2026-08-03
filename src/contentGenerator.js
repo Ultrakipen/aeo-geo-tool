@@ -85,6 +85,19 @@ function buildMockFaqs(intake, n) {
     }
   }
 
+  // 경쟁사 응답이 있으면 차별점 FAQ를 하나 끼워 넣는다 — 실 API 모드의 프롬프트 지침과
+  // 동작을 맞추기 위함(안 그러면 mock 모드에서만 경쟁사 정보가 그냥 버려짐).
+  if (intake.competitors) {
+    const question = `${intake.competitors}와 비교했을 때 ${ctx.brandName}만의 차이점은 무엇인가요?`;
+    if (!seen.has(question)) {
+      seen.add(question);
+      faqs.unshift({
+        question,
+        answer: `${ctx.brandName}는 ${ctx.differentiators || '축적된 실무 경험'}을 바탕으로 서비스를 제공합니다. 각 업체마다 강점이 다르므로 상담을 통해 직접 비교해보시길 권해드립니다.`,
+      });
+    }
+  }
+
   // 인테이크 설문 6번(고객이 자주 묻는 질문)을 실제 FAQ로 우선 반영하고 싶다면 앞쪽에 삽입.
   if (intake.faqQuestionsRaw) {
     const extra = String(intake.faqQuestionsRaw)
@@ -112,6 +125,7 @@ async function generateFaqContent({ intake, n }) {
     '타깃고객': intake.targetCustomer || '',
     '차별점': intake.differentiators || '',
     '설문 6번 답변': intake.faqQuestionsRaw || '',
+    '경쟁사': intake.competitors || '',
   });
 
   const system = `당신은 AEO·GEO 콘텐츠 전문가입니다. 반드시 JSON으로만 답하세요. 스키마: {"faqs":[{"question":string,"answer":string}]} 정확히 ${n}개.${guardrailSuffix(intake.industry)}`;
@@ -130,7 +144,10 @@ function buildMockImprovedCopy(intake, existingCopy) {
   const services = (intake.services && intake.services.length) ? intake.services.join('·') : '핵심 서비스';
   const diff = intake.differentiators || '실무 경험';
   const target = intake.targetCustomer || '고객';
-  const base = `${intake.brandName || '브랜드'}는 ${intake.industry || '해당 분야'}에서 ${diff}를 바탕으로 ${services}를 제공합니다. 주요 대상은 ${target}이며, 과장된 홍보 문구 대신 확인 가능한 사실을 바탕으로 서비스를 안내합니다.`;
+  let base = `${intake.brandName || '브랜드'}는 ${intake.industry || '해당 분야'}에서 ${diff}를 바탕으로 ${services}를 제공합니다. 주요 대상은 ${target}이며, 과장된 홍보 문구 대신 확인 가능한 사실을 바탕으로 서비스를 안내합니다.`;
+  if (intake.competitors) {
+    base += ` ${intake.competitors} 등 다른 선택지와 비교해보시되, 결정 전 상담을 통해 직접 확인하시길 권해드립니다.`;
+  }
   if (!existingCopy) return base;
   // 원문 분량과 비슷하게 유지 — 원문 길이에 맞춰 문장을 덧붙이거나 자른다.
   if (base.length < existingCopy.length * 0.7) {
@@ -142,6 +159,7 @@ function buildMockImprovedCopy(intake, existingCopy) {
 async function improveBrandCopy({ intake, existingCopy }) {
   const userPrompt = fillTemplate(IMPROVE_COPY_PROMPT, {
     '기존 소개문구': existingCopy || '',
+    '경쟁사': intake.competitors || '',
   });
 
   const system = `당신은 AEO·GEO 카피라이팅 전문가입니다. 반드시 JSON으로만 답하세요. 스키마: {"improvedCopy":string}${guardrailSuffix(intake.industry)}`;
