@@ -87,16 +87,38 @@ function contentSectionHtml({ packageTier, faqs, improvedCopy }) {
   ${copyHtml}`;
 }
 
-function snippetSectionHtml({ packageTier, snippets }) {
+// 블로그 플랫폼(네이버 블로그 등)은 <head>/도메인 루트에 코드를 직접 심을 권한이 없는 경우가
+// 많아, PREMIUM의 핵심 산출물(스키마·llms.txt)을 드려도 "받았는데 설치할 곳이 없는" 상황이
+// 생길 수 있다. 코드는 그대로 제공하되, 어디에 어떻게 반영해야 하는지 안내를 덧붙인다.
+function installGuidanceHtml({ platformHosted, adminAccess }) {
+  if (!platformHosted && adminAccess !== '없음') return '';
+
+  const lines = [];
+  if (platformHosted) {
+    lines.push('이 사이트는 네이버 블로그 등 제3자 플랫폼으로 판별되었습니다. 아래 코드는 도메인 루트/<head>에 직접 삽입하는 방식이라 플랫폼 기본 스킨에서는 설치가 불가능하거나 스킨의 "HTML 편집" 기능이 있어야 반영할 수 있습니다.');
+  }
+  if (adminAccess === '없음') {
+    lines.push('설문에서 "사이트 관리자 권한 없음"으로 응답하셨습니다. 직접 설치가 어려우시면 아래 코드를 사이트 관리자·개발자에게 전달해 반영을 요청해 주세요.');
+  }
+  return `<div class="note-box">${lines.map(escapeHtml).join('<br>')}</div>`;
+}
+
+function snippetSectionHtml({ packageTier, snippets, platformHosted, adminAccess }) {
   if (packageTier !== 'premium' || !snippets) return '';
   return `
   <h2>FAQPage 스키마 마크업 (설치용 코드)</h2>
+  ${installGuidanceHtml({ platformHosted, adminAccess })}
   <div class="panel"><pre class="snippet">${escapeHtml(snippets.faqSchemaHtml)}</pre></div>
   <h2>llms.txt (설치용 코드)</h2>
   <div class="panel"><pre class="snippet">${escapeHtml(snippets.llmsTxt)}</pre></div>`;
 }
 
-function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets }) {
+function siteTypeNoteHtml(platformHosted) {
+  if (!platformHosted) return '';
+  return '<p class="lead">판별 결과: 네이버 블로그 등 제3자 블로그 플랫폼 (도메인 루트 파일·헤드 스크립트 설치가 불가능한 항목은 평가에서 중립 처리됨)</p>';
+}
+
+function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets, platformHosted, adminAccess }) {
   // 템플릿 상단의 설명용 HTML 주석은 개발자 참고용이라 고객 전달본에는 남기지 않는다.
   const template = fs.readFileSync(TEMPLATE_PATH, 'utf-8').replace(/<!--[\s\S]*?-->/g, '');
   const categoryScores = buildCategoryScores(allItems);
@@ -123,7 +145,8 @@ function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCo
     ALL_ITEMS_SECTION: allItemsHtml(categoryScores),
     TOP5_ROWS: top5Html(top5WithText),
     CONTENT_SECTION: contentSectionHtml({ packageTier, faqs, improvedCopy }),
-    SNIPPET_SECTION: snippetSectionHtml({ packageTier, snippets }),
+    SNIPPET_SECTION: snippetSectionHtml({ packageTier, snippets, platformHosted, adminAccess }),
+    SITE_TYPE_NOTE: siteTypeNoteHtml(platformHosted),
   };
 
   let html = template;
@@ -134,8 +157,8 @@ function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCo
   return { html, totalScore, grade, categoryScores };
 }
 
-function writeReport({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets }, outputDir) {
-  const { html, totalScore, grade, categoryScores } = buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets });
+function writeReport({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets, platformHosted, adminAccess }, outputDir) {
+  const { html, totalScore, grade, categoryScores } = buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets, platformHosted, adminAccess });
   const safeBrand = (intake.brandName || 'client').replace(/[^a-zA-Z0-9가-힣_-]/g, '_');
   const fileName = `report_${safeBrand}_${packageTier}_${Date.now()}.html`;
   const outputPath = path.join(outputDir, fileName);

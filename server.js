@@ -185,6 +185,13 @@ function renderIntakeForm() {
 
           <label>12. 30일 후 재점검 희망 일정 (PREMIUM)</label>
           <input type="date" name="q12_recheck_date">
+
+          <label>13. 위 URL은 홈페이지(자체 도메인)인가요, 블로그인가요?</label>
+          <select name="q13_url_type">
+            <option value="홈페이지">홈페이지 (자체 도메인)</option>
+            <option value="블로그">블로그 (네이버 블로그·티스토리 등 플랫폼, 커스텀 도메인 연결 포함)</option>
+            <option value="모르겠음">모르겠음</option>
+          </select>
         </fieldset>
 
         <fieldset>
@@ -238,11 +245,15 @@ function faqEditHtml(faqs) {
 }
 
 function renderReviewPage(jobId, job) {
-  const { allItems, top5, content, packageTier, intake, aiMode } = job;
+  const { allItems, top5, content, packageTier, intake, aiMode, site } = job;
   const categoryScores = buildCategoryScores(allItems);
   const totalScore = categoryScores.reduce((s, c) => s + c.score, 0);
   const grade = gradeOf(totalScore);
   const packageLabel = { standard: 'STANDARD', deluxe: 'DELUXE', premium: 'PREMIUM' }[packageTier];
+  const platformHosted = Boolean(site && site.llmsTxt && site.llmsTxt.platformHosted);
+  const platformNote = platformHosted
+    ? '<div class="note-box">⚠ 판별: 네이버 블로그 등 제3자 블로그 플랫폼 — llms.txt/sitemap.xml/스키마 등 코드 설치가 필요한 항목은 중립 처리됨. 오판별이면 리포트 전달 전 확인 필요.</div>'
+    : '';
 
   const contentSection = content ? `
     <h2>FAQ·Q&A 콘텐츠 초안 (${content.faqs.length}건) — 검수 후 필요시 직접 수정하세요</h2>
@@ -258,6 +269,7 @@ function renderReviewPage(jobId, job) {
   return layout('검수 화면', `
     <h1>${intake.brandName || '브랜드'} — 진단 결과 검수</h1>
     <p class="lead">${packageLabel} · 대상: ${intake.url || '(테스트용 HTML)'} · AI 평가 모드: ${aiMode}</p>
+    ${platformNote}
 
     <div class="panel">
       <div class="kpi-row">
@@ -401,6 +413,8 @@ app.post('/export/:jobId', async (req, res) => {
       faqs: job.content ? job.content.faqs : null,
       improvedCopy: job.content ? job.content.improvedCopy : null,
       snippets: job.snippets,
+      platformHosted: Boolean(job.site && job.site.llmsTxt && job.site.llmsTxt.platformHosted),
+      adminAccess: job.intake.adminAccess,
     });
     const reportFileName = `report_${safeBrand}_${job.packageTier}_${stamp}.html`;
     await kvSet(`output:${reportFileName}`, reportHtml);

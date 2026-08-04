@@ -22,10 +22,15 @@ function normalizeUrl(raw) {
   return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+// 대시보드 수동 폼/샘플 데이터는 q4_service1~3 세 필드로 나눠서 보내지만,
+// 실제 구글폼은 "최대3개,쉼표구분" 문항 하나뿐이라 Zap ① 웹훅은 q4_service 한 필드에
+// 콤마로 합쳐서 보낸다 — 이 필드가 있으면 콤마 기준으로 나눠서 동일하게 처리한다.
 function normalizeIntake(raw = {}) {
-  const services = [raw.q4_service1, raw.q4_service2, raw.q4_service3]
-    .map((s) => (s || '').trim())
-    .filter(Boolean);
+  const services = raw.q4_service
+    ? raw.q4_service.split(',').map((s) => s.trim()).filter(Boolean)
+    : [raw.q4_service1, raw.q4_service2, raw.q4_service3]
+      .map((s) => (s || '').trim())
+      .filter(Boolean);
 
   return {
     url: normalizeUrl(raw.q1_url),
@@ -41,7 +46,15 @@ function normalizeIntake(raw = {}) {
     contactInfo: (raw.q10_contact_info || '').trim(),
     adminAccess: (raw.q11_admin_access || '').trim(),
     recheckDate: (raw.q12_recheck_date || '').trim(),
+    urlTypeSelfReport: (raw.q13_url_type || '').trim(),
   };
+}
+
+// URL 호스트네임 목록(BLOG_PLATFORM_HOSTS) 판별은 커스텀 도메인을 연결한 티스토리/워드프레스처럼
+// 겉보기엔 홈페이지 같지만 실제로는 블로그 플랫폼인 경우를 놓친다 — 그래서 설문 13번 자기신고를
+// 자동판별과 OR 조건으로 합쳐 어느 한쪽이라도 "블로그"라고 하면 중립 처리 대상으로 본다.
+function isSelfReportedBlog(intake) {
+  return /블로그/.test(intake.urlTypeSelfReport || '');
 }
 
 // 프롬프트 1은 C/D/F만 채점하므로(원문 유지), 30항목 전체를 대상으로 한
@@ -85,7 +98,7 @@ async function runPipeline({ intake, packageTier, rawHtml }) {
     throw new Error('사이트 URL 또는 테스트용 HTML 중 하나는 필요합니다.');
   }
 
-  const site = await fetchSite({ url: intake.url || undefined, rawHtml });
+  const site = await fetchSite({ url: intake.url || undefined, rawHtml, selfReportBlog: isSelfReportedBlog(intake) });
   const diagnosis = await runDiagnosis({ intake, site });
 
   let content = null;

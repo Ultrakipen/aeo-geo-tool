@@ -50,6 +50,8 @@ async function main() {
     faqs: result.content ? result.content.faqs : null,
     improvedCopy: result.content ? result.content.improvedCopy : null,
     snippets: result.snippets,
+    platformHosted: Boolean(result.site && result.site.llmsTxt && result.site.llmsTxt.platformHosted),
+    adminAccess: result.intake.adminAccess,
   }, outputDir);
 
   console.log('[카테고리별 점수]');

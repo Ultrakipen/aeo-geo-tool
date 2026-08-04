@@ -105,7 +105,7 @@ function detectBreadcrumb(html) {
   return /class=["'][^"']*breadcrumb[^"']*["']/i.test(html);
 }
 
-async function fetchSite({ url, rawHtml }) {
+async function fetchSite({ url, rawHtml, selfReportBlog }) {
   let html;
   let mode;
   let responseTimeMs = null;
@@ -136,7 +136,9 @@ async function fetchSite({ url, rawHtml }) {
     htmlSizeBytes = Buffer.byteLength(html, 'utf-8');
   }
 
-  const platformHosted = isBlogPlatformOrigin(origin);
+  // 호스트네임 목록 판별은 커스텀 도메인을 연결한 티스토리/워드프레스 등을 놓칠 수 있어,
+  // 설문 13번(URL 유형 자기신고)에서 "블로그"라고 답한 경우도 동일하게 중립 처리 대상으로 합친다.
+  const platformHosted = isBlogPlatformOrigin(origin) || Boolean(selfReportBlog);
   const platformHostedResult = { exists: false, checked: false, platformHosted: true };
   const [llmsTxt, sitemap] = platformHosted
     ? [platformHostedResult, platformHostedResult]

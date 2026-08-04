@@ -56,6 +56,9 @@ function checkMetaDescription(site) {
 
 function checkFaqSchema(site) {
   if (site.hasFaqSchema) return { no: 3, score: 2, reason: 'FAQPage 스키마(JSON-LD) 확인됨' };
+  // llms.txt/sitemap.xml과 같은 이유: 네이버 블로그 등 제3자 플랫폼 기본 스킨은
+  // <head>에 커스텀 JSON-LD <script>를 넣을 권한을 고객에게 주지 않는 경우가 많다.
+  if (site.llmsTxt.platformHosted) return { no: 3, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 <head>에 스키마 스크립트 삽입 권한이 없는 경우가 많아 해당 항목은 평가에서 제외(중립 처리)' };
   const hasAnyLdJson = /application\/ld\+json/i.test(site.html);
   if (hasAnyLdJson) return { no: 3, score: 1, reason: '구조화 데이터는 있으나 FAQPage 타입은 아님' };
   return { no: 3, score: 0, reason: 'FAQPage 스키마 마크업 없음' };
