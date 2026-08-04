@@ -252,7 +252,7 @@ function renderReviewPage(jobId, job) {
   const packageLabel = { standard: 'STANDARD', deluxe: 'DELUXE', premium: 'PREMIUM' }[packageTier];
   const platformHosted = Boolean(site && site.llmsTxt && site.llmsTxt.platformHosted);
   const platformNote = platformHosted
-    ? '<div class="note-box">⚠ 판별: 네이버 블로그 등 제3자 블로그 플랫폼 — llms.txt/sitemap.xml/스키마 등 코드 설치가 필요한 항목은 중립 처리됨. 오판별이면 리포트 전달 전 확인 필요.</div>'
+    ? '<div class="note-box">⚠ 판별: 네이버 블로그 등 제3자 블로그 플랫폼 — llms.txt/sitemap.xml/스키마 등 코드 설치가 필요한 항목과 내부링크·메뉴구조·브레드크럼처럼 플랫폼 템플릿에 좌우되는 항목은 중립 처리됨. 오판별이면 리포트 전달 전 확인 필요.</div>'
     : '';
 
   const contentSection = content ? `

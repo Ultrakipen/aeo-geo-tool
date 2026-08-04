@@ -115,7 +115,7 @@ function snippetSectionHtml({ packageTier, snippets, platformHosted, adminAccess
 
 function siteTypeNoteHtml(platformHosted) {
   if (!platformHosted) return '';
-  return '<p class="lead">판별 결과: 네이버 블로그 등 제3자 블로그 플랫폼 (도메인 루트 파일·헤드 스크립트 설치가 불가능한 항목은 평가에서 중립 처리됨)</p>';
+  return '<p class="lead">판별 결과: 네이버 블로그 등 제3자 블로그 플랫폼 (도메인 루트 파일·헤드 스크립트 설치가 불가능한 항목, 내부링크·메뉴구조·브레드크럼처럼 플랫폼 템플릿에 좌우되는 항목은 평가에서 중립 처리됨)</p>';
 }
 
 function buildReportHtml({ intake, packageTier, allItems, top5, faqs, improvedCopy, snippets, platformHosted, adminAccess }) {

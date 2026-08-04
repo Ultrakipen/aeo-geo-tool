@@ -86,7 +86,15 @@ function checkSitemap(site) {
 function checkHeadingHierarchy(site) {
   const { h1, h2, h3 } = site.headings;
   const total = h1.length + h2.length + h3.length;
-  if (total === 0) return { no: 6, score: 0, reason: '제목(H1~H3) 태그가 전혀 없음' };
+  if (total === 0) {
+    // 완전 불가능(llms.txt 등)과 달리 네이버 블로그 에디터에도 "큰제목/중간제목/작은제목"
+    // 스타일 버튼이 있어 블로거가 활용하면 개선 여지가 있다 — 감점은 유지하되 실행 가능한
+    // 코칭 문구로 바꿔 "고칠 수 없는 걸 고치라"는 느낌을 주지 않는다.
+    if (site.llmsTxt.platformHosted) {
+      return { no: 6, score: 0, reason: '제목(H1~H3) 태그가 전혀 없음 — 네이버 블로그 등은 기본적으로 h태그를 안 붙이지만, 에디터의 "큰제목/중간제목/작은제목" 스타일을 본문에 적용하면 개선 가능' };
+    }
+    return { no: 6, score: 0, reason: '제목(H1~H3) 태그가 전혀 없음' };
+  }
   const meaningful = [...h1, ...h2, ...h3].filter((h) => h.length >= 4).length;
   if (h1.length >= 1 && total >= 3 && meaningful >= Math.ceil(total * 0.6)) {
     return { no: 6, score: 2, reason: `제목 계층 ${total}개, 의미 있는 제목 ${meaningful}개로 구조화됨` };
@@ -129,11 +137,24 @@ function checkFreshDate(site) {
   return { no: 10, score: 1, reason: `날짜 표기는 있으나 최신 정보로 보기 어려움 (${latestYear}년)` };
 }
 
+// 2026-08-03 세션엔 "블로그 스킨도 nav/breadcrumb를 기본으로 갖고 있는 경우가 많다"는
+// 가정으로 #21/#22/#23을 중립 처리 대상에서 뺐지만, 실제 운영 중인 네이버 블로그(글 154개,
+// 실제 카테고리 구조 존재)를 라이브 진단해보니 셋 다 0점으로 나왔다 — 카테고리·내부링크가
+// 실제로 있어도 네이버가 <nav>/breadcrumb 클래스/크롤링 가능한 <a href> 같은 시맨틱 HTML을
+// 안 써서 정규식 기반 자동점검으로는 신뢰성 있게 감지가 안 되는 것으로 확인됨. 이는 "권한이
+// 없어 설치 불가능"(llms.txt류)과는 조금 다르지만, 블로거가 뭘 하든 이 자동점검 방식으로는
+// 정당한 점수를 받을 수 없다는 점에서 결과적으로 같은 문제라 동일하게 중립 처리한다.
 function checkInternalLinks(site) {
+  if (site.llmsTxt.platformHosted) {
+    return { no: 21, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 이웃글·카테고리 이동이 플랫폼 UI로 처리되어 본문 HTML만으로는 내부링크를 신뢰성 있게 셀 수 없어 해당 항목은 평가에서 제외(중립 처리)' };
+  }
   return { no: 21, score: scoreThreshold(site.internalLinkCount, 8, 3), reason: `내부링크 추정 ${site.internalLinkCount}개` };
 }
 
 function checkMenuStructure(site) {
+  if (site.llmsTxt.platformHosted) {
+    return { no: 22, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 카테고리·메뉴가 플랫폼 공통 템플릿으로 제공되어(실제 카테고리가 있어도) 본문 HTML만으로는 구조를 신뢰성 있게 판별할 수 없어 해당 항목은 평가에서 제외(중립 처리)' };
+  }
   const h2Count = site.headings.h2.length;
   if (site.hasNav && h2Count >= 2) return { no: 22, score: 2, reason: 'nav 메뉴 + 다수의 섹션 제목으로 카테고리 구조 확인' };
   if (site.hasNav || h2Count >= 1) return { no: 22, score: 1, reason: '메뉴 또는 섹션 구조가 부분적으로만 확인됨' };
@@ -141,6 +162,9 @@ function checkMenuStructure(site) {
 }
 
 function checkBreadcrumb(site) {
+  if (site.llmsTxt.platformHosted) {
+    return { no: 23, score: 1, reason: '네이버 블로그 등 제3자 플랫폼은 브레드크럼을 플랫폼이 자체 UI로 제공하거나 지원하지 않아 개인이 추가할 수 없는 경우가 많아 해당 항목은 평가에서 제외(중립 처리)' };
+  }
   if (site.hasBreadcrumb) return { no: 23, score: 2, reason: '브레드크럼(BreadcrumbList 또는 breadcrumb 클래스) 확인됨' };
   return { no: 23, score: 0, reason: '브레드크럼 신호 없음' };
 }
