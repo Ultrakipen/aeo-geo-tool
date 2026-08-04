@@ -3,6 +3,7 @@
 const { loadPrompt, fillTemplate } = require('./promptLoader');
 const { requestJSON } = require('./openaiClient');
 const { getIndustryProfile } = require('./industryProfile');
+const checklist = require('../config/checklist.json');
 
 const DIAGNOSE_PROMPT = loadPrompt('diagnose.md');
 // 실 API는 업종을 알아서 이해하므로 이 목록은 mock 모드(키 없이 데모할 때) 전용 보강 키워드다.
@@ -10,11 +11,32 @@ const BASE_EXPERTISE_KEYWORDS = ['자격증', '경력', '수상', '특허', '인
 
 const AI_ITEM_NOS = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 26, 27, 28, 29, 30];
 
+// 예전엔 AI에게 항목 번호만 알려주고 각 번호가 무슨 기준인지(checklist.json의 text)는 전달하지
+// 않았다 — 그 결과 모델이 카테고리 이름만 보고 15개 항목을 기억에 의존해 채점하다가, 13/15/16/
+// 18/19/30번처럼 다른 카테고리의 근거 문구를 가져다 쓰는 사례가 실사용 중 발견됐다(예: "고객 후기·
+// 사례 게재 여부"(13번) 항목에 "AI 친화적인 문장 구조가 전혀 나타나지 않는다"는 F카테고리용 사유가
+// 붙는 식). checklist.json을 그대로 프롬프트에 박아 넣어 번호↔정의 매핑을 명시적으로 준다.
+function buildItemDefinitions() {
+  const defs = checklist.categories.flatMap((c) => c.items.map((it) => ({ ...it, categoryCode: c.code, categoryName: c.name })));
+  const byCategory = new Map();
+  for (const no of AI_ITEM_NOS) {
+    const def = defs.find((d) => d.no === no);
+    if (!def) continue;
+    const key = `${def.categoryCode}. ${def.categoryName}`;
+    if (!byCategory.has(key)) byCategory.set(key, []);
+    byCategory.get(key).push(`- ${def.no}. ${def.text}`);
+  }
+  return [...byCategory.entries()].map(([cat, lines]) => `${cat}\n${lines.join('\n')}`).join('\n\n');
+}
+
+const ITEM_DEFINITIONS = buildItemDefinitions();
+
 const SYSTEM_PROMPT = [
   '당신은 AEO·GEO(생성형 AI 검색 노출) 진단 전문가입니다.',
   '반드시 아래 JSON 스키마로만 답하세요. 다른 텍스트는 포함하지 마세요.',
   '{"items":[{"no":11~15,20 중 하나,"score":0|1|2,"reason":"한 줄 근거"}], "top5":[{"no":number,"reason":"한 줄 근거"}]}',
   `items는 반드시 [${AI_ITEM_NOS.join(', ')}] 15개 번호를 모두 포함해야 하고, top5는 그 중 개선이 시급한 5개입니다.`,
+  'reason은 반드시 사용자 메시지에 제시된 "평가 항목 목록"에서 그 no에 해당하는 항목 정의를 근거로 작성해야 하며, 다른 번호의 항목 정의나 다른 카테고리의 기준을 섞어 쓰면 안 됩니다.',
 ].join('\n');
 
 function truncate(text, max = 6000) {
@@ -107,6 +129,7 @@ async function evaluateWithAI({ site, intake }) {
   const brandName = intake.brandName || site.title || '브랜드명 미상';
   const userPrompt = fillTemplate(DIAGNOSE_PROMPT, {
     '브랜드명': brandName,
+    '평가 항목 목록': ITEM_DEFINITIONS,
     '사이트 텍스트': truncate(site.text),
   });
 
